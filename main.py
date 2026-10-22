@@ -1,15 +1,9 @@
-
-from usuario import Usuario
+from datetime import datetime
+from usuario import Estudante, Servidor
+from equipamento import Estoque
 
 usuarios = []
-
-from equipamento import Equipamento
-
-teste = Equipamento("B01", "Bola de Futsal")
-
-print(teste.codigo)
-print(teste.nome)
-print(teste.disponivel)
+estoque = Estoque()
 
 
 def cadastrar_usuario():
@@ -43,19 +37,15 @@ def cadastrar_usuario():
     tipo_opcao = input("Escolha o tipo de usuario: ")
 
     if tipo_opcao == "1":
-        tipo = "Estudante"
+        usuario = Estudante(nome, matricula)
     elif tipo_opcao == "2":
-        tipo = "Servidor"
+        usuario = Servidor(nome, matricula)
     else:
         print("Tipo de usuario invalido!")
         return
 
-    usuario = Usuario(nome, matricula, tipo)
-
     usuarios.append(usuario)
-
     print("Usuario cadastrado com sucesso!")
-
 
 
 def consultar_usuarios():
@@ -63,16 +53,106 @@ def consultar_usuarios():
 
     if len(usuarios) == 0:
         print("Nenhum usuario cadastrado.")
-
     else:
         for usuario in usuarios:
             print("Nome:", usuario.nome)
             print("Matricula:", usuario.matricula)
             print("Tipo:", usuario.tipo)
+            print("Itens emprestados:", len(usuario.itens_emprestados), "/", usuario.limite_itens())
             print("--------------------------")
 
 
+def buscar_usuario_por_matricula(matricula):
+    for u in usuarios:
+        if u.matricula == matricula.strip():
+            return u
+    return None
 
+
+def consultar_equipamentos():
+    estoque.listar()
+
+
+def realizar_emprestimo():
+    print("\n--- REALIZAR EMPRESTIMO ---")
+    matricula = input("Digite a matricula do usuario: ")
+    usuario = buscar_usuario_por_matricula(matricula)
+
+    if usuario is None:
+        print("Usuario nao encontrado! Cadastre o usuario primeiro.")
+        return
+
+    if not usuario.pode_pegar():
+        print(f"O usuario {usuario.nome} ja atingiu o limite de {usuario.limite_itens()} itens!")
+        return
+
+    estoque.listar()
+    codigo = input("\nDigite o codigo do equipamento desejado: ")
+    item = estoque.buscar(codigo)
+
+    if item is None:
+        print("Equipamento nao encontrado.")
+        return
+
+    if not item.disponivel:
+        print("Equipamento ja esta emprestado no momento.")
+        return
+
+    item.disponivel = False
+    usuario.itens_emprestados.append(item)
+    data_atual = datetime.now().strftime("%d/%m/%Y")
+    usuario.historico.append(f"Emprestimo: {item.nome} em {data_atual}")
+
+    print(f"Emprestimo do item '{item.nome}' realizado para {usuario.nome} com sucesso!")
+
+
+def registrar_devolucao():
+    print("\n--- REGISTRAR DEVOLUCAO ---")
+    matricula = input("Digite a matricula do usuario: ")
+    usuario = buscar_usuario_por_matricula(matricula)
+
+    if usuario is None:
+        print("Usuario nao encontrado.")
+        return
+
+    codigo = input("Digite o codigo do equipamento a devolver: ")
+    item = estoque.buscar(codigo)
+
+    if item and item in usuario.itens_emprestados:
+        # Se for bicicleta faz vistoria
+        if item.categoria == "bicicleta":
+            print("\n[ VISTORIA DE BICICLETA ]")
+            pneu = input("Pneus ok? (s/n): ")
+            freio = input("Freios ok? (s/n): ")
+            print(f"Vistoria registrada (pneu: {pneu}, freio: {freio}).")
+
+        item.disponivel = True
+        usuario.itens_emprestados.remove(item)
+        data_atual = datetime.now().strftime("%d/%m/%Y")
+        usuario.historico.append(f"Devolucao: {item.nome} em {data_atual}")
+
+        print("Devolucao registrada com sucesso!")
+    else:
+        print("Este equipamento nao consta na lista de emprestimos deste usuario.")
+
+
+def consultar_historico():
+    print("\n--- CONSULTAR HISTORICO ---")
+    matricula = input("Digite a matricula do usuario: ")
+    usuario = buscar_usuario_por_matricula(matricula)
+
+    if usuario:
+        print(f"\nHistorico de {usuario.nome}:")
+        if len(usuario.historico) == 0:
+            print("Nenhum registro encontrado.")
+        else:
+            for registro in usuario.historico:
+                print("-", registro)
+    else:
+        print("Usuario nao encontrado.")
+
+
+# --- LOOP PRINCIPAL DO MENU ---
 opcao = -1
 
 while opcao != 0:
@@ -98,19 +178,19 @@ while opcao != 0:
         cadastrar_usuario()
 
     elif opcao == 2:
-         consultar_usuarios()
+        consultar_usuarios()
 
     elif opcao == 3:
-        print("Consulta de equipamentos em desenvolvimento.")
+        consultar_equipamentos()
 
     elif opcao == 4:
-        print("Emprestimos em desenvolvimento.")
+        realizar_emprestimo()
 
     elif opcao == 5:
-        print("Devolucoes em desenvolvimento.")
+        registrar_devolucao()
 
     elif opcao == 6:
-        print("Historico em desenvolvimento.")
+        consultar_historico()
 
     elif opcao == 0:
         print("Sistema encerrado!")
